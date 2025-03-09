@@ -112,9 +112,54 @@ class ModelManager:
             
             # Google Models
             try:
-                genai.configure(api_key=self._get_google_api_key())
-                model = genai.GenerativeModel('gemini-pro')
-                self.register_model("gemini-pro", model)
+                google_api_key = self._get_google_api_key()
+                genai.configure(api_key=google_api_key)
+                
+                # Gemini Pro - Best for general text generation and chat
+                self.register_model(
+                    "gemini-pro",
+                    genai.GenerativeModel(
+                        'gemini-pro',
+                        generation_config={
+                            'temperature': 0.7,
+                            'top_p': 0.95,
+                            'top_k': 40,
+                            'max_output_tokens': 2048,
+                        }
+                    )
+                )
+                
+                # Gemini Pro Vision - Best for multimodal tasks
+                self.register_model(
+                    "gemini-pro-vision",
+                    genai.GenerativeModel(
+                        'gemini-pro-vision',
+                        generation_config={
+                            'temperature': 0.7,
+                            'top_p': 0.95,
+                            'top_k': 40,
+                            'max_output_tokens': 2048,
+                        }
+                    )
+                )
+                
+                # Gemini Ultra - Most capable model (when available)
+                try:
+                    self.register_model(
+                        "gemini-ultra",
+                        genai.GenerativeModel(
+                            'gemini-ultra',
+                            generation_config={
+                                'temperature': 0.7,
+                                'top_p': 0.95,
+                                'top_k': 40,
+                                'max_output_tokens': 8192,
+                            }
+                        )
+                    )
+                except Exception as e:
+                    logger.warning(f"Gemini Ultra model not available: {str(e)}")
+                
                 logger.info("Successfully initialized Google models")
             except Exception as e:
                 logger.error(f"Failed to initialize Google models: {str(e)}")

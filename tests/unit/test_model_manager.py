@@ -239,4 +239,110 @@ def test_cohere_model_initialization_error():
         # Verify models were not registered
         assert "command-nightly" not in manager.models
         assert "command-light-nightly" not in manager.models
-        assert "command-nightly-v2.0" not in manager.models 
+        assert "command-nightly-v2.0" not in manager.models
+
+@pytest.fixture
+def mock_google_api_key(monkeypatch):
+    """Mock Google API key in environment."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-google-key")
+
+def test_google_models_initialization(mock_google_api_key):
+    """Test initialization of Google models."""
+    with patch("google.generativeai.configure") as mock_configure, \
+         patch("google.generativeai.GenerativeModel") as mock_model:
+        
+        manager = ModelManager()
+        
+        # Verify API key configuration
+        mock_configure.assert_called_once_with(api_key="test-google-key")
+        
+        # Verify model registrations
+        assert mock_model.call_count >= 2  # At least Gemini Pro and Pro Vision
+        assert "gemini-pro" in manager.models
+        assert "gemini-pro-vision" in manager.models
+
+def test_google_models_configuration():
+    """Test Google model configuration parameters."""
+    with patch("os.getenv", return_value="test-google-key"), \
+         patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model:
+        
+        manager = ModelManager()
+        
+        # Verify configuration for gemini-pro model
+        mock_model.assert_any_call(
+            'gemini-pro',
+            generation_config={
+                'temperature': 0.7,
+                'top_p': 0.95,
+                'top_k': 40,
+                'max_output_tokens': 2048,
+            }
+        )
+        
+        # Verify configuration for gemini-pro-vision model
+        mock_model.assert_any_call(
+            'gemini-pro-vision',
+            generation_config={
+                'temperature': 0.7,
+                'top_p': 0.95,
+                'top_k': 40,
+                'max_output_tokens': 2048,
+            }
+        )
+
+def test_google_models_missing_api_key(monkeypatch):
+    """Test handling of missing Google API key."""
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    
+    with patch("structlog.get_logger") as mock_logger:
+        with pytest.raises(ModelConfigError) as exc_info:
+            manager = ModelManager()
+        
+        assert str(exc_info.value) == "Error initializing default models: GOOGLE_API_KEY not found in environment"
+        mock_logger.return_value.error.assert_any_call("GOOGLE_API_KEY not found in environment")
+
+def test_google_ultra_model_unavailable():
+    """Test handling of unavailable Gemini Ultra model."""
+    with patch("os.getenv", return_value="test-google-key"), \
+         patch("google.generativeai.configure"), \
+         patch("google.generativeai.GenerativeModel") as mock_model, \
+         patch("structlog.get_logger") as mock_logger:
+        
+        # Make Ultra model raise an exception
+        def mock_model_init(model_name, **kwargs):
+            if model_name == 'gemini-ultra':
+                raise Exception("Model not available")
+            return Mock()
+        
+        mock_model.side_effect = mock_model_init
+        
+        manager = ModelManager()
+        
+        # Verify warning was logged
+        mock_logger.return_value.warning.assert_any_call(
+            "Gemini Ultra model not available: Model not available"
+        )
+        
+        # Verify Ultra model was not registered but others were
+        assert "gemini-ultra" not in manager.models
+        assert "gemini-pro" in manager.models
+        assert "gemini-pro-vision" in manager.models
+
+def test_google_models_initialization_error():
+    """Test error handling during Google models initialization."""
+    with patch("os.getenv", return_value="test-google-key"), \
+         patch("google.generativeai.configure", side_effect=Exception("Google API Error")), \
+         patch("structlog.get_logger") as mock_logger:
+        
+        manager = ModelManager()
+        
+        # Verify error was logged
+        mock_logger.return_value.error.assert_any_call(
+            "Failed to initialize Google models: Google API Error"
+        )
+        
+        # Verify no models were registered
+        assert "gemini-pro" not in manager.models
+        assert "gemini-pro-vision" not in manager.models
+        assert "gemini-ultra" not in manager.models 
