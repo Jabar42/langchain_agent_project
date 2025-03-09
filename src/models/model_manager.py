@@ -69,19 +69,55 @@ class ModelManager:
                 logger.error(f"Failed to initialize Anthropic models: {str(e)}")
             
             # Cohere Models
-            self.register_model(
-                "command-nightly",
-                ChatCohere(
-                    model="command-nightly",
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-            )
+            try:
+                cohere_api_key = os.getenv("COHERE_API_KEY")
+                if not cohere_api_key:
+                    logger.warning("COHERE_API_KEY not found in environment, skipping Cohere models")
+                else:
+                    # Command model - best for instruction following
+                    self.register_model(
+                        "command-nightly",
+                        ChatCohere(
+                            model="command-nightly",
+                            temperature=0.7,
+                            max_tokens=2000,
+                            cohere_api_key=cohere_api_key
+                        )
+                    )
+                    
+                    # Command Light model - faster, more efficient
+                    self.register_model(
+                        "command-light-nightly",
+                        ChatCohere(
+                            model="command-light-nightly",
+                            temperature=0.7,
+                            max_tokens=2000,
+                            cohere_api_key=cohere_api_key
+                        )
+                    )
+                    
+                    # Command multilingual model
+                    self.register_model(
+                        "command-nightly-v2.0",
+                        ChatCohere(
+                            model="command-nightly-v2.0",
+                            temperature=0.7,
+                            max_tokens=2000,
+                            cohere_api_key=cohere_api_key
+                        )
+                    )
+                    logger.info("Successfully initialized Cohere models")
+            except Exception as e:
+                logger.error(f"Failed to initialize Cohere models: {str(e)}")
             
             # Google Models
-            genai.configure(api_key=self._get_google_api_key())
-            model = genai.GenerativeModel('gemini-pro')
-            self.register_model("gemini-pro", model)
+            try:
+                genai.configure(api_key=self._get_google_api_key())
+                model = genai.GenerativeModel('gemini-pro')
+                self.register_model("gemini-pro", model)
+                logger.info("Successfully initialized Google models")
+            except Exception as e:
+                logger.error(f"Failed to initialize Google models: {str(e)}")
             
         except Exception as e:
             raise ModelConfigError(f"Error initializing default models: {str(e)}")

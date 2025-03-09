@@ -154,4 +154,97 @@ def test_anthropic_model_parameters():
         assert claude_instant_call["model"] == "claude-instant-1"
         assert claude_instant_call["temperature"] == 0.7
         assert claude_instant_call["max_tokens_to_sample"] == 2000
-        assert claude_instant_call["anthropic_api_key"] == "test-anthropic-key" 
+        assert claude_instant_call["anthropic_api_key"] == "test-anthropic-key"
+
+@patch('os.getenv')
+def test_cohere_models_initialization_success(mock_getenv):
+    """Test successful initialization of Cohere models."""
+    mock_getenv.return_value = "test-cohere-key"
+    
+    with patch('src.models.model_manager.ChatOpenAI'), \
+         patch('src.models.model_manager.ChatAnthropic'), \
+         patch('src.models.model_manager.ChatCohere') as mock_cohere, \
+         patch('src.models.model_manager.genai'):
+        
+        manager = ModelManager()
+        
+        # Verify all Cohere models were initialized
+        assert mock_cohere.call_count == 3
+        
+        # Verify models were registered
+        assert "command-nightly" in manager.models
+        assert "command-light-nightly" in manager.models
+        assert "command-nightly-v2.0" in manager.models
+
+@patch('os.getenv')
+def test_cohere_models_initialization_no_api_key(mock_getenv):
+    """Test Cohere models initialization when API key is missing."""
+    mock_getenv.side_effect = lambda key: None if key == "COHERE_API_KEY" else "other-key"
+    
+    with patch('src.models.model_manager.ChatOpenAI'), \
+         patch('src.models.model_manager.ChatAnthropic'), \
+         patch('src.models.model_manager.ChatCohere') as mock_cohere, \
+         patch('src.models.model_manager.genai'):
+        
+        manager = ModelManager()
+        
+        # Verify no Cohere models were initialized
+        assert mock_cohere.call_count == 0
+        
+        # Verify models were not registered
+        assert "command-nightly" not in manager.models
+        assert "command-light-nightly" not in manager.models
+        assert "command-nightly-v2.0" not in manager.models
+
+@patch('os.getenv')
+def test_cohere_models_initialization_error(mock_getenv):
+    """Test handling of errors during Cohere models initialization."""
+    mock_getenv.return_value = "test-cohere-key"
+    
+    with patch('src.models.model_manager.ChatOpenAI'), \
+         patch('src.models.model_manager.ChatAnthropic'), \
+         patch('src.models.model_manager.ChatCohere') as mock_cohere, \
+         patch('src.models.model_manager.genai'):
+        
+        # Make ChatCohere raise an exception
+        mock_cohere.side_effect = Exception("Cohere API Error")
+        
+        # Should not raise exception, but log error and continue
+        manager = ModelManager()
+        
+        # Verify models were not registered
+        assert "command-nightly" not in manager.models
+        assert "command-light-nightly" not in manager.models
+        assert "command-nightly-v2.0" not in manager.models
+
+def test_cohere_model_parameters():
+    """Test Cohere model initialization parameters."""
+    with patch('os.getenv') as mock_getenv, \
+         patch('src.models.model_manager.ChatOpenAI'), \
+         patch('src.models.model_manager.ChatAnthropic'), \
+         patch('src.models.model_manager.ChatCohere') as mock_cohere, \
+         patch('src.models.model_manager.genai'):
+        
+        mock_getenv.return_value = "test-cohere-key"
+        manager = ModelManager()
+        
+        # Verify command-nightly parameters
+        command_call = mock_cohere.call_args_list[0][1]
+        assert command_call["model"] == "command-nightly"
+        assert command_call["temperature"] == 0.7
+        assert command_call["max_tokens"] == 2000
+        assert command_call["cohere_api_key"] == "test-cohere-key"
+        
+        # Verify command-light-nightly parameters
+        command_light_call = mock_cohere.call_args_list[1][1]
+        assert command_light_call["model"] == "command-light-nightly"
+        assert command_light_call["temperature"] == 0.7
+        assert command_light_call["max_tokens"] == 2000
+        assert command_light_call["cohere_api_key"] == "test-cohere-key"
+        
+        # Verify command-nightly-v2.0 parameters
+        command_v2_call = mock_cohere.call_args_list[2][1]
+        assert command_v2_call["model"] == "command-nightly-v2.0"
+        assert command_v2_call["temperature"] == 0.7
+        assert command_v2_call["max_tokens"] == 2000
+        assert command_v2_call["cohere_api_key"] == "test-cohere-key" 
