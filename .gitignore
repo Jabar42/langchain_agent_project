@@ -1,8 +1,7 @@
-# Entornos virtuales
-venv/
-env/
-ENV/
+# Environment variables
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -26,12 +25,68 @@ wheels/
 .installed.cfg
 *.egg
 
-# Logs y datos
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
 logs/
 *.log
-data/
+
+# Database
 *.db
 *.sqlite3
+
+# Redis
+dump.rdb
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Distribution
+dist/
+build/
+
+# Local development
+local_settings.py
+db.sqlite3
+media/
+
+# Security
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.priv
+*.pub
+
+# Cache
+__pycache__/
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# System Files
+.DS_Store
+Thumbs.db
 
 # Caché
 .cache/
@@ -45,19 +100,7 @@ coverage.xml
 *.cover
 *.py,cover
 
-# IDEs y editores
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
 # Archivos de configuración sensibles
-.env
-.env.*
-!.env.example
 config.json
 secrets.yaml
 credentials.json
@@ -109,8 +152,6 @@ coverage.xml
 .hypothesis/
 
 # Archivos de sistema
-.DS_Store
-Thumbs.db
 desktop.ini
 
 # Directorios de salida
