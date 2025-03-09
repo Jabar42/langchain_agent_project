@@ -9,12 +9,11 @@ import jwt
 import os
 from datetime import datetime, timedelta
 import logging
-from ...agents.multi_model_agent import MultiModelAgent
-from ...models.model_manager import ModelManager
-from ...utils.exceptions import AuthenticationError, ModelError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
+
+from models import Base, User, Chat, Message
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
@@ -57,7 +56,12 @@ def get_db():
     finally:
         db.close()
 
-# Modelos de datos
+# Modelos Pydantic
+class UserCreate(BaseModel):
+    email: str
+    username: str
+    password: str
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -65,45 +69,12 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-class User(BaseModel):
-    username: str
-    disabled: Optional[bool] = None
+# Funciones de utilidad
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
 
-class UserInDB(User):
-    hashed_password: str
-
-class Message(BaseModel):
-    text: str
-    models: Optional[List[str]] = None
-
-class Response(BaseModel):
-    text: str
-    model: str
-    confidence: float
-
-class UserCreate(BaseModel):
-    email: str
-    username: str
-    password: str
-
-# Inicialización del agente
-agent = MultiModelAgent()
-
-# Funciones de autenticación
-def get_user(username: str):
-    # TODO: Implementar base de datos de usuarios
-    if username == os.getenv("ADMIN_USERNAME"):
-        return UserInDB(
-            username=username,
-            hashed_password=os.getenv("ADMIN_PASSWORD"),
-            disabled=False
-        )
-
-def authenticate_user(username: str, password: str):
-    user = get_user(username)
-    if not user or user.hashed_password != password:
-        return False
-    return user
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -181,52 +152,6 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "id": current_user.id
     }
-
-@app.get("/models")
-async def get_available_models(current_user: User = Depends(get_current_user)):
-    """Obtener lista de modelos disponibles."""
-    try:
-        models = agent.model_manager.list_available_models()
-        return {"models": models}
-    except Exception as e:
-        logger.error(f"Error getting models: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/ask")
-async def ask_question(
-    message: Message,
-    current_user: User = Depends(get_current_user)
-):
-    """Procesar una pregunta con el modelo especificado."""
-    try:
-        response = await agent.process_message(
-            message.text,
-            models=message.models
-        )
-        return response
-    except ModelError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error processing message: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/compare")
-async def compare_models(
-    message: Message,
-    current_user: User = Depends(get_current_user)
-):
-    """Comparar respuestas de múltiples modelos."""
-    try:
-        result = await agent.compare_responses(
-            message.text,
-            models=message.models or agent.model_manager.get_default_models()
-        )
-        return result
-    except ModelError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error comparing responses: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health_check():
