@@ -1,0 +1,93 @@
+#!/bin/bash
+
+echo "🔍 Ejecutando pre-commit hooks..."
+
+# Colores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# Verificar formato de mensaje de commit
+commit_msg=$(cat $1)
+commit_pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(\([a-z]+\))?: .{1,50}$"
+
+if ! echo "$commit_msg" | grep -qE "$commit_pattern"; then
+    echo -e "${RED}Error: Formato de commit inválido${NC}"
+    echo -e "${YELLOW}Formato correcto: <tipo>(<alcance>): <descripción>${NC}"
+    echo -e "Tipos: feat, fix, docs, style, refactor, perf, test, build, ci, chore"
+    exit 1
+fi
+
+# Verificar archivos Python
+echo "📝 Verificando archivos Python..."
+files=$(git diff --cached --name-only --diff-filter=ACM | grep ".py$")
+if [ -n "$files" ]; then
+    # Ejecutar black
+    echo "🎨 Ejecutando black..."
+    python -m black $files
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Formateo de código falló${NC}"
+        exit 1
+    fi
+
+    # Ejecutar flake8
+    echo "🔍 Ejecutando flake8..."
+    python -m flake8 $files
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Verificación de estilo falló${NC}"
+        exit 1
+    fi
+
+    # Ejecutar mypy
+    echo "🔍 Verificando tipos con mypy..."
+    python -m mypy $files
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Verificación de tipos falló${NC}"
+        exit 1
+    fi
+
+    # Ejecutar tests unitarios
+    echo "🧪 Ejecutando tests unitarios..."
+    python -m pytest tests/
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Tests fallaron${NC}"
+        exit 1
+    fi
+fi
+
+# Verificar archivos de documentación
+echo "📚 Verificando documentación..."
+docs=$(git diff --cached --name-only --diff-filter=ACM | grep ".md$")
+if [ -n "$docs" ]; then
+    # Verificar PROJECT_TRACKING.md
+    if echo "$docs" | grep -q "PROJECT_TRACKING.md"; then
+        echo "📊 Verificando PROJECT_TRACKING.md..."
+        if ! grep -q "Última actualización: " "PROJECT_TRACKING.md"; then
+            echo -e "${RED}Error: PROJECT_TRACKING.md no tiene fecha de última actualización${NC}"
+            exit 1
+        fi
+    fi
+fi
+
+# Verificar archivos sensibles
+echo "🔒 Verificando archivos sensibles..."
+if git diff --cached --name-only | grep -q ".env$"; then
+    echo -e "${RED}Error: No se permite commitear archivos .env${NC}"
+    exit 1
+fi
+
+# Verificar tamaño del commit
+changes=$(git diff --cached --numstat | awk '{added+=$1; removed+=$2} END {print added+removed}')
+if [ "$changes" -gt 400 ]; then
+    echo -e "${YELLOW}Advertencia: El commit tiene más de 400 líneas cambiadas${NC}"
+    echo -e "Considera dividir los cambios en commits más pequeños"
+    read -p "¿Deseas continuar? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+echo -e "${GREEN}✅ Todas las verificaciones pasaron exitosamente${NC}"
+exit 0 

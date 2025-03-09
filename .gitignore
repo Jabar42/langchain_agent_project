@@ -1,0 +1,122 @@
+# Entornos virtuales
+venv/
+env/
+ENV/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs y datos
+logs/
+*.log
+data/
+*.db
+*.sqlite3
+
+# Caché
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+
+# IDEs y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración sensibles
+.env
+.env.*
+!.env.example
+config.json
+secrets.yaml
+credentials.json
+
+# Archivos temporales
+temp/
+tmp/
+.temp/
+.tmp/
+
+# Archivos de dependencias
+node_modules/
+package-lock.json
+yarn.lock
+
+# Archivos de compilación
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Archivos de documentación generados
+docs/_build/
+site/
+
+# Redis
+dump.rdb
+*.rdb
+
+# Archivos de modelo y vectores
+*.pkl
+*.h5
+*.model
+vectors/
+embeddings/
+
+# Archivos de métricas y monitoreo
+.prometheus
+.grafana
+
+# Archivos de testing
+.coverage
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Directorios de salida
+output/
+results/
+exports/
+
+# Archivos específicos del proyecto
+# Agrega aquí archivos específicos de tu proyecto que no deban ser versionados 
