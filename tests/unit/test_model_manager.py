@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 from src.models.model_manager import ModelManager
 from src.utils.exceptions import ModelNotFoundError, ModelConfigError
 from langchain.chat_models import ChatCohere
+from src.models.model_tier import ModelTier
 
 @pytest.fixture
 def model_manager():
@@ -345,4 +346,157 @@ def test_google_models_initialization_error():
         # Verify no models were registered
         assert "gemini-pro" not in manager.models
         assert "gemini-pro-vision" not in manager.models
-        assert "gemini-ultra" not in manager.models 
+        assert "gemini-ultra" not in manager.models
+
+def test_model_tiers():
+    """Test model tier assignments."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Verify premium tier models
+        assert manager.get_model_tier("gpt-4") == ModelTier.PREMIUM
+        assert manager.get_model_tier("claude-2") == ModelTier.PREMIUM
+        assert manager.get_model_tier("gemini-ultra") == ModelTier.PREMIUM
+        
+        # Verify advanced tier models
+        assert manager.get_model_tier("gpt-3.5-turbo") == ModelTier.ADVANCED
+        assert manager.get_model_tier("claude-instant-1") == ModelTier.ADVANCED
+        assert manager.get_model_tier("command-nightly") == ModelTier.ADVANCED
+        assert manager.get_model_tier("gemini-pro-vision") == ModelTier.ADVANCED
+        
+        # Verify standard tier models
+        assert manager.get_model_tier("command-light-nightly") == ModelTier.STANDARD
+        assert manager.get_model_tier("gemini-pro") == ModelTier.STANDARD
+        
+        # Verify basic tier models
+        assert manager.get_model_tier("command-nightly-v2.0") == ModelTier.BASIC
+
+def test_fallback_same_tier():
+    """Test fallback to models in the same tier."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Make gpt-4 unavailable
+        manager.models["gpt-4"].is_available = False
+        
+        # Should fallback to claude-2 (same tier)
+        model_id, model = manager.get_model("gpt-4")
+        assert model_id == "claude-2"
+        assert model == manager.models["claude-2"].model
+
+def test_fallback_lower_tier():
+    """Test fallback to models in lower tiers."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Make all premium tier models unavailable
+        for model_id in manager.fallback_chains[ModelTier.PREMIUM]:
+            if model_id in manager.models:
+                manager.models[model_id].is_available = False
+        
+        # Should fallback to advanced tier
+        model_id, model = manager.get_model("gpt-4")
+        assert model_id in manager.fallback_chains[ModelTier.ADVANCED]
+        assert model == manager.models[model_id].model
+
+def test_no_fallback():
+    """Test behavior when fallback is disabled."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Make gpt-4 unavailable
+        manager.models["gpt-4"].is_available = False
+        
+        # Should raise error when fallback is disabled
+        with pytest.raises(ModelNotFoundError):
+            manager.get_model("gpt-4", use_fallback=False)
+
+def test_error_tracking():
+    """Test error tracking and model availability."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Record errors for gpt-4
+        for _ in range(3):
+            manager.mark_model_error("gpt-4")
+        
+        # Model should be marked as unavailable
+        assert not manager.models["gpt-4"].is_available
+        
+        # Reset model status
+        manager.reset_model_status("gpt-4")
+        
+        # Model should be available again
+        assert manager.models["gpt-4"].is_available
+        assert manager.models["gpt-4"].error_count == 0
+
+def test_list_available_models_by_tier():
+    """Test listing available models filtered by tier."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Make some models unavailable
+        manager.models["gpt-4"].is_available = False
+        manager.models["command-nightly"].is_available = False
+        
+        # List premium tier models
+        premium_models = manager.list_available_models(ModelTier.PREMIUM)
+        assert "gpt-4" not in premium_models
+        assert "claude-2" in premium_models
+        
+        # List advanced tier models
+        advanced_models = manager.list_available_models(ModelTier.ADVANCED)
+        assert "command-nightly" not in advanced_models
+        assert "gpt-3.5-turbo" in advanced_models
+        
+        # List all available models
+        all_models = manager.list_available_models()
+        assert "gpt-4" not in all_models
+        assert "command-nightly" not in all_models
+        assert "claude-2" in all_models
+        assert "gpt-3.5-turbo" in all_models
+
+def test_best_available_model():
+    """Test getting the best available model."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Make all premium models unavailable
+        for model_id in manager.fallback_chains[ModelTier.PREMIUM]:
+            if model_id in manager.models:
+                manager.models[model_id].is_available = False
+        
+        # Get best available model
+        model_id, model = manager._get_best_available_model()
+        assert model_id in manager.fallback_chains[ModelTier.ADVANCED]
+        assert model == manager.models[model_id].model
+        
+        # Make all models unavailable
+        for model_info in manager.models.values():
+            model_info.is_available = False
+        
+        # Should raise error when no models are available
+        with pytest.raises(ModelNotFoundError):
+            manager._get_best_available_model()
+
+def test_nonexistent_model_fallback():
+    """Test fallback behavior for nonexistent models."""
+    with patch("os.getenv") as mock_getenv:
+        mock_getenv.return_value = "test-key"
+        manager = ModelManager()
+        
+        # Request nonexistent model with fallback
+        model_id, model = manager.get_model("nonexistent-model")
+        assert model_id in manager.models
+        assert model == manager.models[model_id].model
+        
+        # Request nonexistent model without fallback
+        with pytest.raises(ModelNotFoundError):
+            manager.get_model("nonexistent-model", use_fallback=False) 
