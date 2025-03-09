@@ -32,11 +32,11 @@
   - [x] Comandos básicos
   - [x] Sistema de autenticación
   
-- [ ] Conector de Threads
+- [x] Conector de Threads
   - [x] Diseño de la arquitectura
-  - [ ] Autenticación
-  - [ ] Gestión de hilos
-  - [ ] Sistema de respuestas
+  - [x] Autenticación
+  - [x] Gestión de hilos
+  - [x] Sistema de respuestas
 
 ### 4. Sistema de Evaluación
 - [x] Diseño del evaluador
@@ -73,10 +73,10 @@
 
 ### Fase 3: Plataformas y UI
 - [x] Bot de Telegram
-- [ ] Integración con Threads
+- [x] Integración con Threads
 - [ ] Interface web básica
 - ETA: 3 semanas
-- Progreso: 35%
+- Progreso: 70%
 
 ### Fase 4: Optimización y Seguridad
 - [ ] Sistema de caché
@@ -87,7 +87,7 @@
 
 ## 🐛 Issues Actuales
 1. [x] Definir estrategia de manejo de errores en MultiModelAgent
-2. [ ] Resolver integración con API de Threads
+2. [x] Resolver integración con API de Threads
 3. [ ] Optimizar sistema de caché
 4. [ ] Implementar tests unitarios para todos los componentes
 5. [ ] Completar documentación técnica
@@ -110,6 +110,8 @@
 | 2024-03-20 | Core | Implementación completa de MultiModelAgent | ✅ |
 | 2024-03-20 | Evaluator | Sistema de evaluación de respuestas | ✅ |
 | 2024-03-20 | Telegram | Sistema de autenticación | ✅ |
+| 2024-03-20 | Threads | Implementación completa del conector | ✅ |
+| 2024-03-20 | Threads | Sistema de autenticación y gestión de hilos | ✅ |
 
 ## 📝 Notas de Desarrollo
 - Se ha implementado un sistema de fallback robusto que maneja la disponibilidad de modelos por niveles

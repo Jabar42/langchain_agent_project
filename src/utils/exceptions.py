@@ -38,8 +38,8 @@ class RateLimitError(BaseAgentError):
     """Raised when rate limits are exceeded."""
     pass
 
-class AuthenticationError(BaseAgentError):
-    """Raised when authentication fails."""
+class AuthenticationError(ConnectorError):
+    """Raised when there's an error in authentication."""
     pass
 
 class ConfigurationError(BaseAgentError):
