@@ -39,14 +39,6 @@ export const Chat = ({ chatId, title }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    fetchMessages();
-  }, [chatId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const fetchMessages = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -66,6 +58,16 @@ export const Chat = ({ chatId, title }) => {
       });
     }
   };
+
+  useEffect(() => {
+    if (chatId) {
+      fetchMessages();
+    }
+  }, [chatId, fetchMessages]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

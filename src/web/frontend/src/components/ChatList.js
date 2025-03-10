@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   VStack,
   Button,
@@ -18,11 +18,7 @@ export const ChatList = ({ onSelectChat }) => {
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  useEffect(() => {
-    fetchChats();
-  }, []);
-
-  const fetchChats = async () => {
+  const fetchChats = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('http://localhost:8000/chats/', {
@@ -37,7 +33,11 @@ export const ChatList = ({ onSelectChat }) => {
         duration: 3000,
       });
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchChats();
+  }, [fetchChats]);
 
   const handleCreateChat = async (e) => {
     e.preventDefault();
