@@ -56,7 +56,7 @@ def get_db():
     finally:
         db.close()
 
-# Modelos Pydantic
+# Modelos Pydantic para la API
 class UserCreate(BaseModel):
     email: str
     username: str
@@ -68,6 +68,13 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class ChatCreate(BaseModel):
+    title: str
+
+class MessageCreate(BaseModel):
+    content: str
+    role: str = "user"
 
 # Funciones de utilidad
 def verify_password(plain_password, hashed_password):
@@ -152,6 +159,82 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "id": current_user.id
     }
+
+@app.post("/chats/", response_model=None)
+async def create_chat(
+    chat: ChatCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_chat = Chat(
+        title=chat.title,
+        user_id=current_user.id
+    )
+    db.add(db_chat)
+    db.commit()
+    db.refresh(db_chat)
+    return db_chat
+
+@app.get("/chats/", response_model=List[Dict])
+async def get_user_chats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    chats = db.query(Chat).filter(Chat.user_id == current_user.id).all()
+    return [{"id": chat.id, "title": chat.title, "created_at": chat.created_at} for chat in chats]
+
+@app.post("/chats/{chat_id}/messages/", response_model=None)
+async def create_message(
+    chat_id: int,
+    message: MessageCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    db_message = Message(
+        chat_id=chat_id,
+        content=message.content,
+        role=message.role
+    )
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    
+    # TODO: Aquí se procesará el mensaje con el agente de IA
+    # Por ahora, solo devolvemos un mensaje de eco
+    assistant_message = Message(
+        chat_id=chat_id,
+        content=f"Echo: {message.content}",
+        role="assistant"
+    )
+    db.add(assistant_message)
+    db.commit()
+    
+    return {
+        "user_message": db_message,
+        "assistant_message": assistant_message
+    }
+
+@app.get("/chats/{chat_id}/messages/", response_model=List[Dict])
+async def get_chat_messages(
+    chat_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    chat = db.query(Chat).filter(Chat.id == chat_id, Chat.user_id == current_user.id).first()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.created_at).all()
+    return [{
+        "id": msg.id,
+        "content": msg.content,
+        "role": msg.role,
+        "created_at": msg.created_at
+    } for msg in messages]
 
 @app.get("/health")
 async def health_check():
