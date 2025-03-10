@@ -26,7 +26,22 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
     python_requires=">=3.8",
-    install_requires=requirements,
+    install_requires=[
+        "fastapi",
+        "uvicorn",
+        "sqlalchemy",
+        "pydantic",
+        "python-jose[cryptography]",
+        "passlib[bcrypt]",
+        "python-multipart",
+        "psycopg2-binary",
+        "redis",
+        "langchain",
+        "openai",
+        "anthropic",
+        "cohere",
+        "google-cloud-aiplatform",
+    ],
     entry_points={
         "console_scripts": [
             "langchain-agent=src.cli:main",

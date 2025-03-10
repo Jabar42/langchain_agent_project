@@ -7,17 +7,37 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import jwt
 import os
+import socket
 from datetime import datetime, timedelta
 import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
 
-from models import Base, User, Chat, Message
+# Importaciones del proyecto
+from langchain_agent_project.models import Base, User, Chat, Message
+from langchain_agent_project.agents.multi_model_agent import MultiModelAgent
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def find_available_port(start_port: int = 8000, max_port: int = 8100) -> int:
+    """Find an available port starting from start_port."""
+    for port in range(start_port, max_port):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(('localhost', port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError(f"No available ports found between {start_port} and {max_port}")
+
+# Puerto para la aplicación
+PORT = int(os.getenv('API_PORT', find_available_port()))
+HOST = os.getenv('API_HOST', 'localhost')
+
+logger.info(f"Server will start on {HOST}:{PORT}")
 
 # Configuración de la base de datos
 SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/agent_db"
@@ -247,4 +267,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host=HOST, port=PORT) 
